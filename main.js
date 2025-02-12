@@ -29,7 +29,7 @@ dinoDeadImage.src = "images/dinoDead0000.png";
 const groundWidth = canvas.width;
 const groundHeight = 50;
 let groundX = 0;
-const groundY = canvas.height - groundHeight; 
+const groundY = canvas.height - groundHeight;
 const groundImage = new Image();
 groundImage.src = "images/ground.png";
 
@@ -40,12 +40,20 @@ let frame = 0; // Frame count to alternate between dino images
 let isStarted = false;
 let cacti = [];
 
+// Bird properties
+let birds = [];
+const birdImage1 = new Image();
+birdImage1.src = "images/berd.png";
+const birdImage2 = new Image();
+birdImage2.src = "images/berd2.png";
+
 // Cactus properties (different types of cactus)
 const cactusType = ["small", "big", "many"];
 
 // Function to handle jumping
 function jump() {
-  if (dinoY === canvas.height - dinoHeight - 30) { // Only allow jump if dino is on the ground
+  if (dinoY === canvas.height - dinoHeight - 30) {
+    // Only allow jump if dino is on the ground
     velocityY -= 18; // Apply upward force for jump
   }
 }
@@ -60,17 +68,20 @@ function duck() {
   isDucking = true;
 }
 function stopDucking() {
-  isDucking = false; 
+  isDucking = false;
 }
 
 // Function to set up controls (keyboard event listeners)
 function setupControls() {
   document.addEventListener("keydown", function (event) {
-    if (event.key === "ArrowUp") { // When the up arrow key is pressed
+    if (event.key === "ArrowUp") {
+      // When the up arrow key is pressed
       jump();
-    } else if (event.key === "ArrowDown") { // When the down arrow key is pressed
-      duck(); 
-    } else if (event.key === " ") { // When space is pressed to start the game
+    } else if (event.key === "ArrowDown") {
+      // When the down arrow key is pressed
+      duck();
+    } else if (event.key === " ") {
+      // When space is pressed to start the game
       if (!isStarted) {
         isStarted = true;
         animate();
@@ -79,7 +90,8 @@ function setupControls() {
   });
 
   document.addEventListener("keyup", function (event) {
-    if (event.key === "ArrowDown") { // When the down arrow key is released
+    if (event.key === "ArrowDown") {
+      // When the down arrow key is released
       stopDucking();
     }
   });
@@ -90,7 +102,8 @@ function update() {
   velocityY += gravity; // Apply gravity to the dino
   dinoY += velocityY; // Update the dino's vertical position
 
-  if (dinoY > canvas.height - dinoHeight - 30) { // If dino reaches the ground
+  if (dinoY > canvas.height - dinoHeight - 30) {
+    // If dino reaches the ground
     dinoY = canvas.height - dinoHeight - 30; // Keep dino on the ground
     velocityY = 0; // Stop downward velocity
   }
@@ -100,9 +113,17 @@ function update() {
 
   // Move cactus leftward and remove them if they go off-screen
   cacti.forEach((cactus, index) => {
-    cactus.x -= speed; 
+    cactus.x -= speed;
     if (cactus.x + cactus.width <= 0) {
       cacti.splice(index, 1); // Remove cactus when it goes off-screen
+    }
+  });
+
+  // Move birds leftward and remove them if they go off-screen
+  birds.forEach((bird, index) => {
+    bird.x -= speed;
+    if (bird.x + bird.width <= 0) {
+      birds.splice(index, 1); // Remove bird when it goes off-screen
     }
   });
 
@@ -134,7 +155,7 @@ function drawDino() {
     ctx.drawImage(
       dinoDuckImage,
       dinoX,
-      dinoY + 14, 
+      dinoY + 14,
       dinoWidth,
       dinoHeight / 1.5 // Make dino shorter while ducking
     );
@@ -145,6 +166,53 @@ function drawDino() {
   }
 }
 
+// Timer for bird spawning
+let birdTimer = 0;
+// Function to draw the bird
+function drawBird() {
+    birdTimer++; // Increase the bird timer each frame
+  
+    // Only spawn a bird after a certain number of frames
+    if (birdTimer >= spawnRate * 2.9) {
+      const birdHeight = 40;
+      const birdWidth = 40;
+      const birdX = canvas.width; // Position bird at the right edge of the canvas
+  
+      // Define two bird positions: one high and one low
+      const birdYHigh = canvas.height - birdHeight - 160; // Higher position (player needs to jump)
+      const birdYLow = canvas.height - birdHeight - 55; // Lower position (player needs to duck)
+  
+      // Check if there is a cactus on the screen
+      const isCactusPresent = cacti.some(cactus => cactus.x + cactus.width > 0); // Check if any cactus is visible on the screen
+  
+      // Randomly choose between high and low positions
+      // If there is a cactus, prioritize the low position (e.g., 70% chance for low, 30% for high)
+      // If there is no cactus, choose randomly between high and low
+      const birdY = isCactusPresent
+        ? Math.random() < 0.7 ? birdYLow : birdYHigh // 70% chance for low, 30% for high when cactus is present
+        : Math.random() < 0.5 ? birdYHigh : birdYLow; // 50% chance for high or low when no cactus is present
+  
+      const bird = {
+        x: birdX,
+        y: birdY,
+        width: birdWidth,
+        height: birdHeight,
+        image: "", // Use the selected bird image
+      };
+      birds.push(bird); // Add the bird to the birds array
+      birdTimer = 0; // Reset bird timer
+    }
+  
+    // Move birds leftward and draw them
+    birds.forEach((bird, index) => {
+      let birdImage = frame % 10 < 5 ? birdImage1 : birdImage2; // Alternate between two bird images
+      bird.x -= speed - 1; // Move bird leftward
+      if (bird.x + bird.width <= 0) {
+        birds.splice(index, 1); // Remove bird when it goes off-screen
+      }
+      ctx.drawImage(birdImage, bird.x, bird.y, bird.width, bird.height);
+    });
+  }
 // Timer for cactus spawning
 let cactusTimer = 0;
 
@@ -155,7 +223,7 @@ function drawCactus() {
   // Only spawn a cactus after a certain number of frames
   if (cactusTimer >= spawnRate) {
     const type = cactusType[Math.floor(Math.random() * cactusType.length)]; // Randomly choose cactus type
-    const cactusHeight = type === "big" ? 40 : 30; // Set cactus height based on its type
+    const cactusHeight = type === "big" ? 40 : type === "small" ? 30 : 35; // Set cactus height based on its type
     const cactusWidth = type === "big" ? 25 : type === "small" ? 20 : 40; // Set cactus width
     const cactusX = canvas.width; // Position cactus at the right edge of the canvas
     const cactusY = canvas.height - cactusHeight - 30; // Set cactus height position
@@ -204,6 +272,7 @@ function draw() {
   drawGround(); // Draw the ground
   drawDino(); // Draw the dino
   drawCactus(); // Draw the cactus
+  drawBird(); // Draw the bird
 }
 
 // Function to animate the game
@@ -214,6 +283,5 @@ function animate() {
   frame++; // Increment frame count
   requestAnimationFrame(animate); // Call the animate function for the next frame
 }
-
 
 setupControls();
