@@ -7,6 +7,7 @@ This is a simple implementation of the Chrome Dino game, which is a fun and addi
 - Endless runner gameplay
 - Increasing difficulty over time
 - Simple controls using the keyboard
+- Day/Night Mode
 
 ## Installation
 
@@ -23,7 +24,8 @@ This is a simple implementation of the Chrome Dino game, which is a fun and addi
 ## How to Play
 
 - Press the `Space` key to start the game.
-- Use the `Space` key to jump over obstacles.
+- Use the `ArrowUp` key to jump over obstacles.
+- Use the `ArrowDown` key to duck.
 - The game ends when the dinosaur collides with an obstacle.
 
 ## Contributing
