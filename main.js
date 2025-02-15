@@ -39,6 +39,9 @@ const spawnRate = 120; // Spawn rate of cactus
 let frame = 0; // Frame count to alternate between dino images
 let isStarted = false;
 let cacti = [];
+let score = 0;
+let highScore = localStorage.getItem("highScore") || 0;
+let dayNightCycle = "day";
 
 // Bird properties
 let birds = [];
@@ -61,6 +64,13 @@ function jump() {
 // Function to handle game over state
 function dead() {
   isStarted = false;
+  if (score > highScore) {
+    highScore = Math.floor(score);
+    localStorage.setItem("highScore", highScore);
+  }
+  alert("Game Over");
+  // Reload window
+    window.location.reload();
 }
 
 // Function to handle ducking
@@ -131,14 +141,36 @@ function update() {
   if (groundX <= -groundWidth) {
     groundX = 0;
   }
+
+  if (isStarted && !isDead) {
+    score += 0.05 * speed; // Calculate the score based on frame count
+  }
+
+  if (Math.floor(score / 400) % 2 === 0) {
+    dayNightCycle = "day";
+  } else {
+    dayNightCycle = "night";
+  }
+
+  // Call the collision detection functions
+  checkCactusCollision();
+  checkBirdCollision();
 }
 
 // Function to draw the ground
 function drawGround() {
+  let nightGroundImage;
   // Draw the ground twice to create the illusion of a continuous moving background
-  ctx.drawImage(groundImage, groundX, groundY, groundWidth, groundHeight);
+  if (dayNightCycle === "day") {
+    document.body.style.backgroundColor = "white";
+    nightGroundImage = groundImage;
+  } else {
+    document.body.style.backgroundColor = "black";
+    nightGroundImage = invertImage(groundImage);
+  }
+  ctx.drawImage(nightGroundImage, groundX, groundY, groundWidth, groundHeight);
   ctx.drawImage(
-    groundImage,
+    nightGroundImage,
     groundX + groundWidth,
     groundY,
     groundWidth,
@@ -150,19 +182,31 @@ function drawGround() {
 function drawDino() {
   let dinoImage = frame % 10 < 5 ? dinoRunImage1 : dinoRunImage2; // Alternate between two running images
   let dinoDuckImage = frame % 10 < 5 ? dinoDuckImage1 : dinoDuckImage2; // Alternate between two ducking images
-
+  let nightDinoImage;
+  let nightDinoDuckImage;
+  let nightDinoDeadImage;
+  // Draw the ground twice to create the illusion of a continuous moving background
+  if (dayNightCycle === "day") {
+    nightDinoImage = dinoImage;
+    nightDinoDuckImage = dinoDuckImage;
+    nightDinoDeadImage = dinoDeadImage;
+  } else {
+    nightDinoImage = invertImage(dinoImage);
+    nightDinoDuckImage = invertImage(dinoDuckImage);
+    nightDinoDeadImage = invertImage(dinoDeadImage);
+  }
   if (isDucking) {
     ctx.drawImage(
-      dinoDuckImage,
+      nightDinoDuckImage,
       dinoX,
       dinoY + 14,
       dinoWidth,
       dinoHeight / 1.5 // Make dino shorter while ducking
     );
   } else if (isDead) {
-    ctx.drawImage(dinoDeadImage, dinoX, dinoY, dinoWidth, dinoHeight); // Draw the dead dino
+    ctx.drawImage(nightDinoDeadImage, dinoX, dinoY, dinoWidth, dinoHeight); // Draw the dead dino
   } else {
-    ctx.drawImage(dinoImage, dinoX, dinoY, dinoWidth, dinoHeight); // Draw the running dino
+    ctx.drawImage(nightDinoImage, dinoX, dinoY, dinoWidth, dinoHeight); // Draw the running dino
   }
 }
 
@@ -170,49 +214,60 @@ function drawDino() {
 let birdTimer = 0;
 // Function to draw the bird
 function drawBird() {
-    birdTimer++; // Increase the bird timer each frame
-  
-    // Only spawn a bird after a certain number of frames
-    if (birdTimer >= spawnRate * 2.9) {
-      const birdHeight = 40;
-      const birdWidth = 40;
-      const birdX = canvas.width; // Position bird at the right edge of the canvas
-  
-      // Define two bird positions: one high and one low
-      const birdYHigh = canvas.height - birdHeight - 160; // Higher position (player needs to jump)
-      const birdYLow = canvas.height - birdHeight - 55; // Lower position (player needs to duck)
-  
-      // Check if there is a cactus on the screen
-      const isCactusPresent = cacti.some(cactus => cactus.x + cactus.width > 0); // Check if any cactus is visible on the screen
-  
-      // Randomly choose between high and low positions
-      // If there is a cactus, prioritize the low position (e.g., 70% chance for low, 30% for high)
-      // If there is no cactus, choose randomly between high and low
-      const birdY = isCactusPresent
-        ? Math.random() < 0.7 ? birdYLow : birdYHigh // 70% chance for low, 30% for high when cactus is present
-        : Math.random() < 0.5 ? birdYHigh : birdYLow; // 50% chance for high or low when no cactus is present
-  
-      const bird = {
-        x: birdX,
-        y: birdY,
-        width: birdWidth,
-        height: birdHeight,
-        image: "", // Use the selected bird image
-      };
-      birds.push(bird); // Add the bird to the birds array
-      birdTimer = 0; // Reset bird timer
-    }
-  
-    // Move birds leftward and draw them
-    birds.forEach((bird, index) => {
-      let birdImage = frame % 10 < 5 ? birdImage1 : birdImage2; // Alternate between two bird images
-      bird.x -= speed - 1; // Move bird leftward
-      if (bird.x + bird.width <= 0) {
-        birds.splice(index, 1); // Remove bird when it goes off-screen
-      }
-      ctx.drawImage(birdImage, bird.x, bird.y, bird.width, bird.height);
-    });
+  birdTimer++; // Increase the bird timer each frame
+
+  // Only spawn a bird after a certain number of frames
+  if (birdTimer >= spawnRate * 2.9) {
+    const birdHeight = 40;
+    const birdWidth = 40;
+    const birdX = canvas.width; // Position bird at the right edge of the canvas
+
+    // Define two bird positions: one high and one low
+    const birdYHigh = canvas.height - birdHeight - 160; // Higher position (player needs to jump)
+    const birdYLow = canvas.height - birdHeight - 55; // Lower position (player needs to duck)
+
+    // Check if there is a cactus on the screen
+    const isCactusPresent = cacti.some((cactus) => cactus.x + cactus.width > 0); // Check if any cactus is visible on the screen
+
+    // Randomly choose between high and low positions
+    // If there is a cactus, prioritize the low position (e.g., 70% chance for low, 30% for high)
+    // If there is no cactus, choose randomly between high and low
+    const birdY = isCactusPresent
+      ? Math.random() < 0.7
+        ? birdYLow
+        : birdYHigh // 70% chance for low, 30% for high when cactus is present
+      : Math.random() < 0.5
+      ? birdYHigh
+      : birdYLow; // 50% chance for high or low when no cactus is present
+
+    const bird = {
+      x: birdX,
+      y: birdY,
+      width: birdWidth,
+      height: birdHeight,
+      image: "", // Use the selected bird image
+    };
+    birds.push(bird); // Add the bird to the birds array
+    birdTimer = 0; // Reset bird timer
   }
+
+  // Move birds leftward and draw them
+  birds.forEach((bird, index) => {
+    let birdImage = frame % 10 < 5 ? birdImage1 : birdImage2; // Alternate between two bird images
+    let nightBirdImage;
+    // Draw the ground twice to create the illusion of a continuous moving background
+    if (dayNightCycle === "day") {
+      nightBirdImage = birdImage;
+    } else {
+      nightBirdImage = invertImage(birdImage);
+    }
+    bird.x -= speed - 1; // Move bird leftward
+    if (bird.x + bird.width <= 0) {
+      birds.splice(index, 1); // Remove bird when it goes off-screen
+    }
+    ctx.drawImage(nightBirdImage, bird.x, bird.y, bird.width, bird.height);
+  });
+}
 // Timer for cactus spawning
 let cactusTimer = 0;
 
@@ -266,15 +321,70 @@ function drawCactus() {
     );
   });
 }
+if (!isStarted) {
+  ctx.font = "20px Arial";
+  ctx.fillStyle = "black";
+  ctx.fillText("Press Space to start the game", canvas.width / 2.8, 150);
+  ctx.drawImage(groundImage, groundX, groundY, groundWidth, groundHeight);
+}
 
-// Function to draw the entire game scene
+function drawScore() {
+  ctx.font = "20px Arial";
+  if (dayNightCycle === "day") {
+    ctx.fillStyle = "black";
+    canvas.style.backgroundColor = "white";
+  } else {
+    ctx.fillStyle = "white";
+    canvas.style.backgroundColor = "black";
+  }
+  ctx.fillText("Score: " + Math.floor(score), 10, 30);
+  ctx.fillText("High Score: " + highScore, 10, 55);
+}
+
+function checkCactusCollision() {
+  for (let i = 0; i < cacti.length; i++) {
+    const cactus = cacti[i];
+
+    // Check if the dino is colliding with the cactus
+    if (
+      dinoX + dinoWidth > cactus.x &&
+      dinoX < cactus.x + cactus.width &&
+      dinoY + dinoHeight > cactus.y
+    ) {
+      // Collision detected
+      isDead = true;
+      dead(); // End the game
+      break;
+    }
+  }
+}
+
+function checkBirdCollision() {
+  for (let i = 0; i < birds.length; i++) {
+    const bird = birds[i];
+
+    // Check if the dino is colliding with the bird
+    if (
+      dinoX + dinoWidth > bird.x &&
+      dinoX < bird.x + bird.width &&
+      dinoY + dinoHeight > bird.y &&
+      dinoY < bird.y + bird.height
+    ) {
+      // Collision detected
+      isDead = true;
+      dead(); // End the game
+      break;
+    }
+  }
+}
+
 function draw() {
   drawGround(); // Draw the ground
   drawDino(); // Draw the dino
   drawCactus(); // Draw the cactus
   drawBird(); // Draw the bird
+  drawScore(); // Draw the score
 }
-
 // Function to animate the game
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas for the next frame
@@ -285,3 +395,41 @@ function animate() {
 }
 
 setupControls();
+
+function invertImage(image) {
+  // Create a temporary canvas to draw the image and manipulate it
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+
+  // Set canvas size to match image size
+  tempCanvas.width = image.width;
+  tempCanvas.height = image.height;
+
+  // Draw the image to the temporary canvas
+  tempCtx.drawImage(image, 0, 0);
+
+  // Get the image data from the canvas
+  const imageData = tempCtx.getImageData(
+    0,
+    0,
+    tempCanvas.width,
+    tempCanvas.height
+  );
+  const data = imageData.data;
+
+  // Invert the colors by modifying the RGBA values
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 255 - data[i]; // Invert Red
+    data[i + 1] = 255 - data[i + 1]; // Invert Green
+    data[i + 2] = 255 - data[i + 2]; // Invert Blue
+  }
+
+  // Put the modified image data back to the canvas
+  tempCtx.putImageData(imageData, 0, 0);
+
+  // Return the inverted image as a new Image object
+  const invertedImage = new Image();
+  invertedImage.src = tempCanvas.toDataURL(); // Convert to Data URL to use as image source
+
+  return invertedImage;
+}
