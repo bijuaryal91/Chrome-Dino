@@ -84,10 +84,10 @@ function stopDucking() {
 // Function to set up controls (keyboard event listeners)
 function setupControls() {
   document.addEventListener("keydown", function (event) {
-    if (event.key === "ArrowUp") {
+    if (event.key === "ArrowUp" || event.key==="W") {
       // When the up arrow key is pressed
       jump();
-    } else if (event.key === "ArrowDown") {
+    } else if (event.key === "ArrowDown" || event.key==="S") {
       // When the down arrow key is pressed
       duck();
     } else if (event.key === " ") {
@@ -100,7 +100,7 @@ function setupControls() {
   });
 
   document.addEventListener("keyup", function (event) {
-    if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown" || event.key==="S") {
       // When the down arrow key is released
       stopDucking();
     }
